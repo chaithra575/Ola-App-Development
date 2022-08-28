@@ -1,0 +1,2 @@
+	shivaprasad:	private Button loginBtn
+	loginBtn=findViewById(R.id.login);

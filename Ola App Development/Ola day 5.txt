@@ -1,0 +1,254 @@
+com.google.firebase:firebase-auth:19.2.0
+	import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+00:28:56	shivaprasad:	"rules": {
+    ".read": true,
+    ".write": true
+  }
+	@Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+
+        locationRequest = new LocationRequest();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+            if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
+
+            }else{
+                checkLocationPermission();
+            }
+        }
+    }
+	LocationCallback mLocationCallback = new LocationCallback(){
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            for(Location location : locationResult.getLocations()){
+                if(getApplicationContext()!=null){
+
+                    mlocation = location;
+
+
+                    LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+                    
+                }
+            }
+        }
+    };
+	private void checkLocationPermission() {
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Location permission")
+                        .setMessage("Taxi App requires your location access in order to fetch nearby cabs")
+	.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                ActivityCompat.requestPermissions(DriverMapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                            }
+                        })
+                        .create()
+                        .show();
+            }
+            else{
+                ActivityCompat.requestPermissions(DriverMapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            }
+        }
+    }
+	@Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch(requestCode){
+            case 1:{
+                if(grantResults.length >0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
+                        mFusedLocationClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
+                        mMap.setMyLocationEnabled(true);
+                    }
+                } else{
+                    Toast.makeText(getApplicationContext(), "Please provide the permission", Toast.LENGTH_LONG).show();
+                }
+                break;
+            }
+        }
+    }
+	private GoogleMap mMap;
+	private Location mlocation;
+
+
+    private LocationRequest locationRequest;
+	private FusedLocationProviderClient mFusedLocationClient;
+	In OnCreate->
+	mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+
+
+	https://developer.android.com/training/location/request-updates
+	LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
+	<!--
+             TODO: Before you run your application, you need a Google Maps API key.
+
+             To get one, follow the directions here:
+
+                https://developers.google.com/maps/documentation/android-sdk/get-api-key
+
+             Once you have your API key (it starts with "AIza"), define a new property in your
+             project's local.properties file (e.g. MAPS_API_KEY=Aiza...), and replace the
+             "YOUR_API_KEY" string in this file with "${MAPS_API_KEY}".
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="YOUR_API_KEY" />
+
+
+	https://github.com/firebase/geofire-android
+	https://github.com/firebase/geofire-android
+	<LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+    <Button
+        android:layout_gravity="top"
+        android:background="@color/colorPrimaryDark"
+        android:textColor="@color/white"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Logout"
+        android:id="@+id/logout"/>
+        <Switch
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Working"
+            android:layout_margin="10sp"
+            android:id="@+id/workingSwitch"/>
+    </LinearLayout>
+
+
+	String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                    DatabaseReference refAvailable = FirebaseDatabase.getInstance().getReference("driversAvailable");
+                    DatabaseReference refWorking = FirebaseDatabase.getInstance().getReference("driversWorking");
+                    GeoFire geoFireAvailable = new GeoFire(refAvailable);
+                    GeoFire geoFireWorking = new GeoFire(refWorking);
+
+                    switch (customerId){
+                        case "":
+                            geoFireWorking.removeLocation(userId);
+                            geoFireAvailable.setLocation(userId, new GeoLocation(location.getLatitude(), location.getLongitude()));
+                            break;
+
+                        default:
+                            geoFireAvailable.removeLocation(userId);
+                            geoFireWorking.setLocation(userId, new GeoLocation(location.getLatitude(), location.getLongitude()));
+                            break;
+
+
+In mLocationCallback ->
+	logoutBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                disconnectDriver();
+                FirebaseAuth.getInstance().signOut();
+                Intent intent = new Intent(DriverMapActivity.this, DriverLoginActivity.class);
+                startActivity(intent);
+                finish();
+                //auth.signOut();
+        }
+    
+
+
+	private void disconnectDriver() {
+        if(mFusedLocationClient != null){
+            mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+        }
+        String userid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("driversAvailable");
+        GeoFire geoFire = new GeoFire(reference);
+        geoFire.removeLocation(userid);
+    }
+
+
+
+<Button
+        android:layout_weight="0.5"
+        android:layout_width="0dp"
+        android:layout_gravity="top"
+        android:background="@color/colorPrimaryDark"
+        android:textColor="@color/white"
+        android:layout_height="wrap_content"
+        android:text="Logout"
+        android:id="@+id/logout"/>
+
+
+	@Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
+
+        locationRequest = new LocationRequest();
+        locationRequest.setInterval(1000);
+        locationRequest.setFastestInterval(1000);
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        if(android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+            if(ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
+
+            }else{
+                checkLocationPermission();
+            }
+        }
+
+        mFusedLocationClient.requestLocationUpdates(locationRequest, mLocationCallback, Looper.myLooper());
+        mMap.setMyLocationEnabled(true);
+    }
+
+
+
+	LocationCallback mLocationCallback = new LocationCallback(){
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            for(Location location : locationResult.getLocations()){
+                if(getApplicationContext()!=null){
+                    lastLocation = location;
+
+                    LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
+
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                    mMap.animateCamera(CameraUpdateFactory.zoomTo(11));
+                    /*if(!getDriversAroundStarted)
+                        getDriversAround();*/
+                }
+            }
+        }
+    };
+
+
+	logoutBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FirebaseAuth.getInstance().signOut();
+                Intent intent = new Intent(CustomerMapActivity.this, DriverLoginActivity.class);
+                startActivity(intent);
+                finish();
+                //auth.signOut();
+            }
+        });
+
+
+
+	<Button
+        android:layout_gravity="bottom"
+        android:background="@color/colorPrimaryDark"
+        android:textColor="@color/white"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Request Cab"
+        android:id="@+id/request_cab"/>
+	

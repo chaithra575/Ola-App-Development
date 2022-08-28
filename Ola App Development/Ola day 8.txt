@@ -1,0 +1,277 @@
+	<ImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:id="@+id/profileImage"
+        android:src="@drawable/ic_default_user"
+        android:layout_marginBottom="20dp"/>
+    <EditText
+        android:id="@+id/name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@null"
+        android:hint="Name"
+        android:layout_marginBottom="20dp"/>
+
+	<EditText
+        android:id="@+id/phone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@null"
+        android:hint="Phone"
+        android:layout_marginBottom="20sp"
+        android:inputType="number"/>
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/confirm"
+        android:text="confirm"/>
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/back"
+        android:text="back"/>
+
+
+<Button
+            android:layout_weight="0.5"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@color/colorPrimaryDark"
+            android:textColor="@color/white"
+            android:id="@+id/settings"
+            android:text="Settings"/>
+
+
+settingsBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(CustomerMapActivity.this, CustomerSettingsActivity.class);
+                startActivity(intent);
+                return;
+            }
+        });
+
+
+implementation 'com.github.bumptech.glide:glide:4.11.0'
+
+	In build gradel
+
+	gradle*
+
+mAuth = FirebaseAuth.getInstance();
+        userID = mAuth.getCurrentUser().getUid();
+        mCustomerDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child("Customers").child(userID);
+
+        getUserInfo();
+
+
+
+	onCreate of CustomerSettingsActivity
+
+	profileImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_PICK);
+                intent.setType("image/*");
+                startActivityForResult(intent, 1);
+            }
+        });
+
+
+
+	@Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == 1 && resultCode == Activity.RESULT_OK){
+            final Uri imageUri = data.getData();
+            resultUri = imageUri;
+            profileImage.setImageURI(resultUri);
+        }
+    }
+
+	private FirebaseAuth mAuth;
+    private DatabaseReference mCustomerDatabase;
+
+    private String userID;
+    private String mName;
+    private String mPhone;
+    private String mProfileImageUrl;
+
+    private Uri resultUri;
+
+	rivate void getUserInfo(){
+        mCustomerDatabase.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists() && dataSnapshot.getChildrenCount()>0){
+                    Map<String, Object> map = (Map<String, Object>) dataSnapshot.getValue();
+                    if(map.get("name")!=null){
+                        mName = map.get("name").toString();
+                        customerName.setText(mName);
+                    }
+
+	if(map.get("phone")!=null){
+                        mPhone = map.get("phone").toString();
+                        customerPhone.setText(mPhone);
+                    }
+                    if(map.get("profileImageUrl")!=null){
+                        mProfileImageUrl = map.get("profileImageUrl").toString();
+                        Glide.with(getApplication()).load(mProfileImageUrl).into(profileImage);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+            }
+        });
+    }
+
+	
+implementation 'com.google.firebase:firebase-storage:19.1.1'
+
+	
+https://firebase.google.com/docs/storage/android/start
+
+	
+private void saveUserInformation() {
+        mName = customerName.getText().toString();
+        mPhone = customerPhone.getText().toString();
+
+        Map userInfo = new HashMap();
+        userInfo.put("name", mName);
+        userInfo.put("phone", mPhone);
+        mCustomerDatabase.updateChildren(userInfo);
+
+        if(resultUri != null) {
+
+            StorageReference filePath = FirebaseStorage.getInstance().getReference().child("profile_images").child(userID);
+            Bitmap bitmap = null;
+            try {
+                Bitmap bitmap1= MediaStore.Images.Media.getBitmap(getApplication().getContentResolver(),resultUri); //ContentResolver will take reference from local storage
+                bitmap = rotateImageIfRequired(bitmap1, CustomerSettingsActivity.this,resultUri);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+
+	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 20, baos);
+            byte[] data = baos.toByteArray();
+            UploadTask uploadTask = filePath.putBytes(data);
+
+            uploadTask.addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    finish();
+                    return;
+                }
+            });
+
+
+
+
+	uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    Task<Uri> urlTask = taskSnapshot.getStorage().getDownloadUrl();
+                    while (!urlTask.isSuccessful());
+                    Uri downloadUrl = urlTask.getResult();
+
+                    Map newImage = new HashMap();
+                    newImage.put("profileImageUrl", downloadUrl.toString());
+                    mCustomerDatabase.updateChildren(newImage);
+
+                    finish();
+                    return;
+                }
+            });
+        }else{
+            finish();
+        }
+
+    }
+
+
+
+
+	public static Bitmap rotateImageIfRequired(Bitmap img, Context context, Uri selectedImage) throws IOException {
+
+        if (selectedImage.getScheme().equals("content")) {
+            String[] projection = { MediaStore.Images.ImageColumns.ORIENTATION };
+            Cursor c = context.getContentResolver().query(selectedImage, projection, null, null, null);
+            if (c.moveToFirst()) {
+                final int rotation = c.getInt(0);
+                c.close();
+                return rotateImage(img, rotation);
+            }
+            return img;
+        } else {
+
+
+
+
+	ExifInterface ei = new ExifInterface(selectedImage.getPath());
+            int orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+
+            switch (orientation) {
+                case ExifInterface.ORIENTATION_ROTATE_90:
+                    return rotateImage(img, 90);
+                case ExifInterface.ORIENTATION_ROTATE_180:
+                    return rotateImage(img, 180);
+                case ExifInterface.ORIENTATION_ROTATE_270:
+                    return rotateImage(img, 270);
+                default:
+                    return img;
+            }
+        }
+    }
+
+
+
+
+
+	https://developers.google.com/maps/documentation/places/android-sdk/cloud-setup
+
+	if (!Places.isInitialized()) {
+            Places.initialize(getApplicationContext(), apiKey);
+        }
+
+	CustomerMapActivity -> onCreate
+
+
+
+
+
+https://developers.google.com/maps/documentation/places/android-sdk/autocomplete
+
+	private String destination;
+
+    private LatLng destinationLatLng;
+
+
+
+	CustomerMapActivity
+
+	// Initialize the AutocompleteSupportFragment.
+        AutocompleteSupportFragment autocompleteFragment = (AutocompleteSupportFragment)
+                getSupportFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
+
+        autocompleteFragment.setPlaceFields(Arrays.asList(Place.Field.ID, Place.Field.NAME));
+
+        autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(Place place) {
+                // TODO: Get info about the selected place.
+                destination = place.getName().toString();
+                destinationLatLng = place.getLatLng();
+            }
+
+            @Override
+            public void onError(Status status) {
+                // TODO: Handle the error.
+                Log.i("Places", "An error occurred: " + status);
+            }
+        });
+    }

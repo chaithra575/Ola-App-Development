@@ -1,0 +1,12 @@
+	https://www.tutorialspoint.com/java/index.htm
+	<?xml version="1.0" encoding="utf-8"?><layer-list xmlns:android="http://schemas.android.com/apk/res/android" >  <item      android:drawable="@drawable/icon"      android:width="@dimen/icon_size"      android:height="@dimen/icon_size"      /></layer-list >
+<ViewSwitcher        android:id="@+id/login_switcher"        android:layout_width="match_parent"        android:layout_height="wrap_content"        android:layout_centerVertical="true"        android:layout_margin="10dp">
+
+	dataBinding {
+        enabled = true
+    }
+	<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+	implementation 'androidx.appcompat:appcompat:1.4.1'
