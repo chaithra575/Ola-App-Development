@@ -1,0 +1,215 @@
+	https://developer.paypal.com/dashboard/accounts
+	https://github.com/paypal/PayPal-Android-SDK
+	https://developer.paypal.com/limited-release/paypal-mobile-checkout/android/
+implementation 'com.paypal.sdk:paypal-android-sdk:2.16.0'
+private Button mPay;
+mPay = findViewById(R.id.pay);
+	mPay.setVisibility(View.VISIBLE);
+	mPay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                payPalPayment();
+            }
+        });
+	In displayCustomerRelatedObjects
+public class PaypalConfig {
+    public static final String PAYPAL_CLIENT_ID="";
+}
+Create a class
+	private int PAYPAL_REQUEST_CODE = 1;
+    private static PayPalConfiguration config = new PayPalConfiguration()
+            .environment(PayPalConfiguration.ENVIRONMENT_SANDBOX)
+            .clientId(PaypalConfig.PAYPAL_CLIENT_ID);
+
+    private void payPalPayment() {
+        PayPalPayment payment = new PayPalPayment(new BigDecimal(ridePrice), "USD", "TaxiApp Ride",
+                PayPalPayment.PAYMENT_INTENT_SALE);
+
+        Intent intent = new Intent(this, PaymentActivity.class);
+
+        intent.putExtra(PayPalService.EXTRA_PAYPAL_CONFIGURATION, config);
+        intent.putExtra(PaymentActivity.EXTRA_PAYMENT, payment);
+
+        startActivityForResult(intent, PAYPAL_REQUEST_CODE);
+    }
+	Intent intent = new Intent(this, PayPalService.class);
+        intent.putExtra(PayPalService.EXTRA_PAYPAL_CONFIGURATION, config);
+        startService(intent);
+	In onCreate
+	@Override
+    protected void onDestroy() {
+        stopService(new Intent(this, PayPalService.class));
+        super.onDestroy();
+    }
+	@Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PAYPAL_REQUEST_CODE){
+            if(resultCode == Activity.RESULT_OK){
+                PaymentConfirmation confirm = data.getParcelableExtra(PaymentActivity.EXTRA_RESULT_CONFIRMATION);
+                if(confirm != null){
+                    try{
+                        JSONObject jsonObj = new JSONObject(confirm.toJSONObject().toString());
+
+                        String paymentResponse = jsonObj.getJSONObject("response").getString("state");
+	if(paymentResponse.equals("approved")){
+                            Toast.makeText(getApplicationContext(), "Payment successful", Toast.LENGTH_LONG).show();
+                            historyRideInfoDb.child("customerPaid").setValue(true);
+                            mPay.setEnabled(false);
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }else{
+                Toast.makeText(getApplicationContext(), "Payment unsuccessful", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+	private Boolean customerPaid = false;
+	if (child.getKey().equals("rating")){
+                            mRatingBar.setRating(Integer.valueOf(child.getValue().toString()));
+
+                        }
+                        if (child.getKey().equals("customerPaid")){
+                            customerPaid =true;
+                        }
+	In getRideInformation
+	f(customerPaid) {
+            mPay.setEnabled(false);
+        } else {
+            mPay.setEnabled(true);
+        }
+	In displayCustomerRelatedObjects
+	<LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+                <TextView
+                    android:padding="20dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Balance: 0$"
+                    android:id="@+id/balance"
+                    android:visibility="visible"/>
+
+        </LinearLayout>
+	In activity_history
+	private TextView mBalance;
+
+    private Double Balance = 0.0;
+	mBalance = findViewById(R.id.balance);
+	if(customerOrDriver.equals("Drivers")){
+            mBalance.setVisibility(View.VISIBLE);
+        }
+	In onCreate
+if(dataSnapshot.child("customerPaid").getValue() != null && dataSnapshot.child("driverPaidOut").getValue() == null){
+                        if(dataSnapshot.child("distance").getValue() != null){
+                            ridePrice = Double.valueOf(dataSnapshot.child("price").getValue().toString());
+                            Balance += ridePrice;
+                            mBalance.setText("Balance: " + String.valueOf(Balance) + " $");
+                        }
+                    }
+	FetchRideInformation in HistoryActivity
+
+
+	<EditText
+                    android:visibility="gone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/payoutEmail"
+                    android:hint="paypal email"/>
+                <Button
+                    android:visibility="gone"
+                    android:text="payout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/payout"/>
+	mPayout = findViewById(R.id.payout);
+        mPayoutEmail = findViewById(R.id.payoutEmail);
+	mPayout.setVisibility(View.VISIBLE);
+            mPayoutEmail.setVisibility(View.VISIBLE);
+            mPayout.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    payoutRequest();
+                }
+            });
+	public static final MediaType MEDIA_TYPE = MediaType.parse("application/json");
+    ProgressDialog progress;
+    private void payoutRequest() {
+        progress = new ProgressDialog(this);
+        progress.setTitle("Processing your payout");
+        progress.setMessage("Please Wait...");
+        progress.setCancelable(false); // disable dismiss by tapping outside of the dialog
+        progress.show();
+
+        final OkHttpClient client = new OkHttpClient();
+        JSONObject postData = new JSONObject();
+        try {
+            postData.put("uid", FirebaseAuth.getInstance().getCurrentUser().getUid());
+            postData.put("email", mPayoutEmail.getText());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        RequestBody body = RequestBody.create(MEDIA_TYPE,
+                postData.toString());
+	final Request request = new Request.Builder()
+                .url("https://api-m.sandbox.paypal.com/v1/payments/payout")
+                .post(body)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", "Your Token")
+                .addHeader("cache-control", "no-cache")
+                .build();
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                String mMessage = e.getMessage().toString();
+                Log.w("failure Response", mMessage);
+                progress.dismiss();
+            }
+	@Override
+            public void onResponse(Call call, Response response)
+                    throws IOException {
+
+                int responseCode = response.code();
+
+
+                if (response.isSuccessful())
+                    switch (responseCode) {
+                        case 200:
+                            Snackbar.make(findViewById(R.id.layout), "Payout Successful!", Snackbar.LENGTH_LONG).show();
+                            break;
+                        case 501:
+                            Snackbar.make(findViewById(R.id.layout), "Error: no payout available", Snackbar.LENGTH_LONG).show();
+                            break;
+                        default:
+                            Snackbar.make(findViewById(R.id.layout), "Error: couldn't complete the transaction", Snackbar.LENGTH_LONG).show();
+                            break;
+	}
+                else
+                    Snackbar.make(findViewById(R.id.layout), "Error: couldn't complete the transaction", Snackbar.LENGTH_LONG).show();
+
+                progress.dismiss();
+            }
+        });
+    }
+	private DataSnapshot historyDataSnapshot;
+	historyDataSnapshot = dataSnapshot;
+                    for(DataSnapshot history : dataSnapshot.getChildren()){
+                        FetchRideInformation(history.getKey());
+                    }
+	In getUserHistoryIds
+	if(historyDataSnapshot != null){
+                                for(DataSnapshot history : historyDataSnapshot.getChildren()){
+                                    updatePayout(history.getKey());
+                                }
+                            }
+	private void updatePayout(String rideKey) {
+        DatabaseReference historyDatabase = FirebaseDatabase.getInstance().getReference().child("history").child(rideKey);
+        historyDatabase.child("driverPaidOut").setValue(true);
+    }
+	https://www.digitalocean.com/community/tutorials/okhttp-android-example-tutorial
+	https://www.geeksforgeeks.org/how-to-post-data-to-api-using-retrofit-in-android/
